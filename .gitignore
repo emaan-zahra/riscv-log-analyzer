@@ -1,0 +1,20 @@
+#Generated reports
+output/*
+!output/.gitkeep
+#OS files
+.DS_Store
+Thumbs.db
+#Editor files
+cat > .gitignore << 'EOF'
+#Generated reports
+output/*
+!output/.gitkeep
+#OS files
+.DS_Store
+Thumbs.db
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
