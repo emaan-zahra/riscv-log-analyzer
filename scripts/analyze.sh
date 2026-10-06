@@ -99,34 +99,21 @@ TOTAL=$((PASS_COUNT + FAIL_COUNT + SKIP_COUNT))
 # If TOTAL is 0 we print 0.0 to avoid dividing by zero.
 PASS_RATE=$(awk -v p="$PASS_COUNT" -v t="$TOTAL" 'BEGIN { if (t == 0) print "0.0"; else printf "%.1f", p * 100 / t }')
 
-# Temporary lines so we can check the numbers (we will replace these later)
-echo "Total:  $TOTAL"
-echo "Passed: $PASS_COUNT"
-echo "Failed: $FAIL_COUNT"
-echo "Skipped: $SKIP_COUNT"
-echo "Pass rate: $PASS_RATE%"
+# Percentages for the report. A small helper so we don't repeat ourselves.
+# Function 4: turn a count into a percentage with one decimal place
+percent() {
+    awk -v c="$1" -v t="$TOTAL" 'BEGIN { if (t == 0) printf "0.0"; else printf "%.1f", c * 100 / t }'
+}
 
-# Get the names of failing tests.
-# Each FAIL line looks like: [time] TEST FAIL: rv32i-sll (1.02s)
-# After "TEST FAIL: " the name is the next word, so awk prints field $5.
+# Names of failing tests, one per line (empty if none)
 FAILED_TESTS=$(grep "TEST FAIL:" "$LOG_FILE" | awk '{print $5}' || true)
-
-echo ""
-echo "--- Failed Tests ---"
-if [[ -z "$FAILED_TESTS" ]]; then
-    echo "  (none)"
-else
-    # nl numbers each line: 1, 2, 3 ...
-    echo "$FAILED_TESTS" | nl -w2 -s'. '
-fi
 
 # Timing: only PASS and FAIL lines have a time like (0.82s).
 # SKIP lines say "(not supported)", so we leave them out.
-# awk remembers the min, max and sum while it reads each line.
 TIMING=$(grep -E "TEST (PASS|FAIL):" "$LOG_FILE" | awk '
 {
-    name = $5                    # test name, e.g. rv32i-add
-    t = $6                       # time, e.g. (0.82s)
+    name = $5
+    t = $6
     gsub(/[()s]/, "", t)         # remove ( ) and s, leaving 0.82
     t = t + 0                    # turn the text into a number
     if (n == 0 || t < min) { min = t; minname = name }
@@ -139,14 +126,83 @@ END {
         printf "%.2f %s %.2f %s %.2f", min, minname, max, maxname, sum / n
 }')
 
-echo ""
-echo "--- Timing Statistics ---"
-if [[ -z "$TIMING" ]]; then
-    echo "No timing data found"
-else
-    # Split the awk result into five variables
+MIN_T="" MIN_N="" MAX_T="" MAX_N="" AVG_T=""
+if [[ -n "$TIMING" ]]; then
     read -r MIN_T MIN_N MAX_T MAX_N AVG_T <<< "$TIMING"
-    echo "Min time:  ${MIN_T}s ($MIN_N)"
-    echo "Max time:  ${MAX_T}s ($MAX_N)"
-    echo "Avg time:  ${AVG_T}s"
 fi
+
+# Function 5: build the text report
+make_text_report() {
+    echo "=== RISC-V Simulation Log Analysis ==="
+    echo "Log file: $LOG_FILE"
+    echo "Analysis date: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo ""
+    echo "--- Results Summary ---"
+    echo "Total tests: $TOTAL"
+    printf "Passed:  %4d (%5s%%)\n" "$PASS_COUNT" "$PASS_RATE"
+    printf "Failed:  %4d (%5s%%)\n" "$FAIL_COUNT" "$(percent "$FAIL_COUNT")"
+    printf "Skipped: %4d (%5s%%)\n" "$SKIP_COUNT" "$(percent "$SKIP_COUNT")"
+    echo ""
+    echo "--- Failed Tests ---"
+    if [[ -z "$FAILED_TESTS" ]]; then
+        echo "  (none)"
+    else
+        echo "$FAILED_TESTS" | nl -w3 -s'. '
+    fi
+    echo ""
+    echo "--- Timing Statistics ---"
+    if [[ -z "$TIMING" ]]; then
+        echo "No timing data found"
+    else
+        echo "Min time:  ${MIN_T}s ($MIN_N)"
+        echo "Max time:  ${MAX_T}s ($MAX_N)"
+        echo "Avg time:  ${AVG_T}s"
+    fi
+    echo ""
+    if [[ $FAIL_COUNT -gt 0 ]]; then
+        echo "--- Verdict: FAIL ---"
+        echo "Exit code: 1"
+    else
+        echo "--- Verdict: PASS ---"
+        echo "Exit code: 0"
+    fi
+}
+
+# Function 6: build the CSV report (header line, then one line per metric)
+make_csv_report() {
+    echo "metric,value"
+    echo "log_file,$LOG_FILE"
+    echo "total,$TOTAL"
+    echo "passed,$PASS_COUNT"
+    echo "failed,$FAIL_COUNT"
+    echo "skipped,$SKIP_COUNT"
+    echo "pass_rate,$PASS_RATE"
+    # Join the failing names with semicolons so they fit in one CSV cell
+    echo "failed_tests,$(echo "$FAILED_TESTS" | paste -sd';' -)"
+    echo "min_time,${MIN_T:-}"
+    echo "min_test,${MIN_N:-}"
+    echo "max_time,${MAX_T:-}"
+    echo "max_test,${MAX_N:-}"
+    echo "avg_time,${AVG_T:-}"
+}
+
+# Pick the report type, then print it to the screen or save it to a file
+log_verbose "Building $FORMAT report"
+if [[ "$FORMAT" == "csv" ]]; then
+    REPORT=$(make_csv_report)
+else
+    REPORT=$(make_text_report)
+fi
+
+if [[ -n "$OUTPUT" ]]; then
+    echo "$REPORT" > "$OUTPUT"
+    log_verbose "Report saved to $OUTPUT"
+else
+    echo "$REPORT"
+fi
+
+# Exit code: 1 if any test failed, otherwise 0
+if [[ $FAIL_COUNT -gt 0 ]]; then
+    exit 1
+fi
+exit 0
