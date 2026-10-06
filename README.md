@@ -41,6 +41,7 @@ Exit code is 0 if all tests pass and 1 if any test fails. Bad input exits with 2
 - Colored output: green for PASS, red for FAIL (only when printing to a terminal)
 - `--compare`: regression check between two logs
 - `scripts/generate_report.sh`: writes a `.txt` and an HTML table report per log
+  Run `./scripts/generate_report.sh` to create text and HTML reports in `output/`.
 - Options are parsed with `getopts` (short forms `-f -o -v -h -c` also work)
 
 ## Makefile targets
