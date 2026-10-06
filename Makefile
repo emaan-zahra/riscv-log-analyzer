@@ -3,8 +3,7 @@
 SCRIPT = scripts/analyze.sh
 LOGS = test_data/sample_sim.log test_data/sample_pass.log test_data/sample_fail.log
 
-.PHONY: help setup
-
+.PHONY: help setup all clean test report
 # Show all available targets
 help:
 	@echo "Available targets:"
@@ -26,3 +25,17 @@ setup:
 		fi; \
 	done
 	@echo "All tools found."
+
+	# Run the analyzer on every test log (a failing log is expected, so we
+# put a "-" before the command to tell make not to stop on exit code 1)
+all:
+	@for log in $(LOGS); do \
+		echo ">>> Analyzing $$log"; \
+		./$(SCRIPT) $$log || true; \
+		echo ""; \
+	done
+
+# Remove everything generated in output/ (but keep .gitkeep)
+clean:
+	@find output -type f ! -name '.gitkeep' -delete
+	@echo "Cleaned output/"
