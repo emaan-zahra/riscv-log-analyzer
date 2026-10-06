@@ -139,18 +139,20 @@ make_text_report() {
     echo ""
     echo "--- Results Summary ---"
     echo "Total tests: $TOTAL"
-    printf "Passed:  %4d (%5s%%)\n" "$PASS_COUNT" "$PASS_RATE"
-    printf "Failed:  %4d (%5s%%)\n" "$FAIL_COUNT" "$(percent "$FAIL_COUNT")"
+    printf "${GREEN}Passed:  %4d (%5s%%)${RESET}\n" "$PASS_COUNT" "$PASS_RATE"
+    printf "${RED}Failed:  %4d (%5s%%)${RESET}\n" "$FAIL_COUNT" "$(percent "$FAIL_COUNT")"
     printf "Skipped: %4d (%5s%%)\n" "$SKIP_COUNT" "$(percent "$SKIP_COUNT")"
     echo ""
     echo "--- Per-Test Times ---"
     # Print each test name and its time; SKIP lines have no time, so they are left out
-    grep -E "TEST (PASS|FAIL):" "$LOG_FILE" | awk '{printf "  %-14s %s\n", $5, $6}'
+        # $4 is "PASS:" or "FAIL:", so we pick the color from it
+    grep -E "TEST (PASS|FAIL):" "$LOG_FILE" | awk -v g="$GREEN" -v r="$RED" -v z="$RESET" \
+        '{ c = ($4 == "PASS:") ? g : r; printf "  %s%-14s %s%s\n", c, $5, $6, z }'
     echo ""
 
 
 
-    
+
     echo "--- Failed Tests ---"
     if [[ -z "$FAILED_TESTS" ]]; then
         echo "  (none)"
@@ -168,10 +170,10 @@ make_text_report() {
     fi
     echo ""
     if [[ $FAIL_COUNT -gt 0 ]]; then
-        echo "--- Verdict: FAIL ---"
+        echo "${RED}--- Verdict: FAIL ---${RESET}"
         echo "Exit code: 1"
     else
-        echo "--- Verdict: PASS ---"
+        echo "${GREEN}--- Verdict: PASS ---${RESET}"
         echo "Exit code: 0"
     fi
 }
@@ -193,6 +195,19 @@ make_csv_report() {
     echo "max_test,${MAX_N:-}"
     echo "avg_time,${AVG_T:-}"
 }
+
+# Colors (ANSI escape codes). We only use them when printing to a terminal.
+# [[ -t 1 ]] is true when stdout is a screen, and false when piped or saved to a file,
+# so reports saved with --output or checked by "make test" stay free of escape codes.
+if [[ -t 1 && -z "$OUTPUT" ]]; then
+    GREEN=$'\033[32m'
+    RED=$'\033[31m'
+    RESET=$'\033[0m'
+else
+    GREEN=""
+    RED=""
+    RESET=""
+fi
 
 # Pick the report type, then print it to the screen or save it to a file
 log_verbose "Building $FORMAT report"
