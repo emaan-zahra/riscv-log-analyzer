@@ -26,8 +26,8 @@ setup:
 	done
 	@echo "All tools found."
 
-	# Run the analyzer on every test log (a failing log is expected, so we
-# put a "-" before the command to tell make not to stop on exit code 1)
+# Run the analyzer on every test log. "|| true" stops make from quitting
+# when a log with failing tests makes the script exit with code 1
 all:
 	@for log in $(LOGS); do \
 		echo ">>> Analyzing $$log"; \
@@ -40,8 +40,9 @@ clean:
 	@find output -type f ! -name '.gitkeep' -delete
 	@echo "Cleaned output/"
 
-	# Write a text and a CSV report for every log into output/
+# Write a text and a CSV report for every log into output/
 report:
+
 	@mkdir -p output
 	@for log in $(LOGS); do \
 		name=$$(basename $$log .log); \
