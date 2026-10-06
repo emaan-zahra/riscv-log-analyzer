@@ -143,6 +143,14 @@ make_text_report() {
     printf "Failed:  %4d (%5s%%)\n" "$FAIL_COUNT" "$(percent "$FAIL_COUNT")"
     printf "Skipped: %4d (%5s%%)\n" "$SKIP_COUNT" "$(percent "$SKIP_COUNT")"
     echo ""
+    echo "--- Per-Test Times ---"
+    # Print each test name and its time; SKIP lines have no time, so they are left out
+    grep -E "TEST (PASS|FAIL):" "$LOG_FILE" | awk '{printf "  %-14s %s\n", $5, $6}'
+    echo ""
+
+
+
+    
     echo "--- Failed Tests ---"
     if [[ -z "$FAILED_TESTS" ]]; then
         echo "  (none)"
