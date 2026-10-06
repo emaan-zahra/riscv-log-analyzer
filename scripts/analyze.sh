@@ -16,8 +16,9 @@ usage() {
     echo "  --format [text|csv]   Output format (default: text)"
     echo "  --output <path>       Save output to a file (default: screen)"
     echo "  --verbose             Show extra progress messages"
-    echo "  --help                Show this message"
     echo "  --compare <file>      Compare with a newer log and show regressions"
+    echo "  --help                Show this message"
+    echo "Short forms: -f, -o, -v, -h, -c (parsed with getopts)"
 }
 
 # Function 2: print an error message and stop
@@ -33,48 +34,49 @@ log_verbose() {
     fi
 }
 
-# Read the arguments one by one.
-# "shift" throws away the argument we just handled, so $1 becomes the next one.
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --help)
-            usage
-            exit 0
-            ;;
-        --verbose)
-            VERBOSE=1
-            shift
-            ;;
-        --compare)
-            if [[ $# -lt 2 ]]; then
-                error_exit "--compare needs a file path"
-            fi
-            COMPARE_FILE="$2"
-            shift 2
-            ;;
-        --format)
-            # --format needs a value after it, so check there is one
-            if [[ $# -lt 2 ]]; then
-                error_exit "--format needs a value (text or csv)"
-            fi
-            FORMAT="$2"
-            shift 2
-            ;;
-        --output)
-            if [[ $# -lt 2 ]]; then
-                error_exit "--output needs a file path"
-            fi
-            OUTPUT="$2"
-            shift 2
-            ;;
-        -*)
-            error_exit "Unknown option: $1"
-            ;;
-        *)
-            # Anything else is the log file
-            LOG_FILE="$1"
-            shift
-            ;;
+# getopts only understands short options (-f, -o ...), so first we
+# translate each long option (--format ...) into its short form.
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --format)  ARGS+=("-f") ;;
+        --output)  ARGS+=("-o") ;;
+        --verbose) ARGS+=("-v") ;;
+        --help)    ARGS+=("-h") ;;
+        --compare) ARGS+=("-c") ;;
+        --*)       error_exit "Unknown option: $arg" ;;
+        *)         ARGS+=("$arg") ;;
+    esac
+done
+
+# getopts stops at the first word that is not an option, so we pull the
+# log file out of the list first. A word counts as the log file if it is
+# not an option and does not follow an option that needs a value.
+REST=()
+prev=""
+for arg in "${ARGS[@]+"${ARGS[@]}"}"; do
+    if [[ "$arg" != -* && "$prev" != "-f" && "$prev" != "-o" && "$prev" != "-c" ]]; then
+        LOG_FILE="$arg"
+    else
+        REST+=("$arg")
+    fi
+    prev="$arg"
+done
+set -- "${REST[@]+"${REST[@]}"}"
+
+# Handle the options with getopts. A colon after a letter (f:) means the
+# option needs a value. The leading colon makes getopts quiet, so we
+# print our own error messages.
+OPTIND=1
+while getopts ":f:o:c:vh" opt; do
+    case "$opt" in
+        f) FORMAT="$OPTARG" ;;
+        o) OUTPUT="$OPTARG" ;;
+        c) COMPARE_FILE="$OPTARG" ;;
+        v) VERBOSE=1 ;;
+        h) usage; exit 0 ;;
+        :) error_exit "Option -$OPTARG needs a value" ;;
+        \?) error_exit "Unknown option: -$OPTARG" ;;
     esac
 done
 
