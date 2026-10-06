@@ -13,6 +13,7 @@
 - `--output <path>`: save the report to a file instead of printing it.
 - `--verbose`: print progress messages to stderr.
 - `--help`: print usage and exit.
+- `--compare <file>`: second log; lists tests that passed in `<log_file>` but fail in `<file>`. Exits 1 if any regression is found.
 
 ## Exit codes
 

@@ -24,6 +24,7 @@ make setup
 | `--format [text\|csv]` | Output format (default: text) |
 | `--output <path>` | Write the report to a file (default: screen) |
 | `--verbose` | Show extra progress messages |
+| `--compare <file>` | Show tests that passed in the first log but fail in the second |
 | `--help` | Show usage information |
 
 Exit code is 0 if all tests pass and 1 if any test fails. Bad input exits with 2.
@@ -35,6 +36,12 @@ Exit code is 0 if all tests pass and 1 if any test fails. Bad input exits with 2
 ./scripts/analyze.sh test_data/sample_fail.log --format csv
 ./scripts/analyze.sh test_data/sample_fail.log --output output/report.txt
 ```
+## Bonus features
+
+- Colored output: green for PASS, red for FAIL (only when printing to a terminal)
+- `--compare`: regression check between two logs
+- `scripts/generate_report.sh`: writes a `.txt` and an HTML table report per log
+- Options are parsed with `getopts` (short forms `-f -o -v -h -c` also work)
 
 ## Makefile targets
 
