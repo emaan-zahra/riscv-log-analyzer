@@ -1,3 +1,2 @@
 #riscv-log-analyzer
-A shell-based tool that analyzes RISC-V simulation log files and
-generates summary reports.
+A command-line tool written in bash that reads RISC-V simulation logs and generates summary reports.
