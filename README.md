@@ -6,7 +6,7 @@ generates summary reports.
 ## Installation
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/emaan-zahra/riscv-log-analyzer.git
 cd riscv-log-analyzer
 make setup
 ```
