@@ -52,3 +52,48 @@ echo "Passed: $PASS_COUNT"
 echo "Failed: $FAIL_COUNT"
 echo "Skipped: $SKIP_COUNT"
 echo "Pass rate: $PASS_RATE%"
+
+# Get the names of failing tests.
+# Each FAIL line looks like: [time] TEST FAIL: rv32i-sll (1.02s)
+# After "TEST FAIL: " the name is the next word, so awk prints field $5.
+FAILED_TESTS=$(grep "TEST FAIL:" "$LOG_FILE" | awk '{print $5}' || true)
+
+echo ""
+echo "--- Failed Tests ---"
+if [[ -z "$FAILED_TESTS" ]]; then
+    echo "  (none)"
+else
+    # nl numbers each line: 1, 2, 3 ...
+    echo "$FAILED_TESTS" | nl -w2 -s'. '
+fi
+
+# Timing: only PASS and FAIL lines have a time like (0.82s).
+# SKIP lines say "(not supported)", so we leave them out.
+# awk remembers the min, max and sum while it reads each line.
+TIMING=$(grep -E "TEST (PASS|FAIL):" "$LOG_FILE" | awk '
+{
+    name = $5                    # test name, e.g. rv32i-add
+    t = $6                       # time, e.g. (0.82s)
+    gsub(/[()s]/, "", t)         # remove ( ) and s, leaving 0.82
+    t = t + 0                    # turn the text into a number
+    if (n == 0 || t < min) { min = t; minname = name }
+    if (n == 0 || t > max) { max = t; maxname = name }
+    sum += t
+    n++
+}
+END {
+    if (n > 0)
+        printf "%.2f %s %.2f %s %.2f", min, minname, max, maxname, sum / n
+}')
+
+echo ""
+echo "--- Timing Statistics ---"
+if [[ -z "$TIMING" ]]; then
+    echo "No timing data found"
+else
+    # Split the awk result into five variables
+    read -r MIN_T MIN_N MAX_T MAX_N AVG_T <<< "$TIMING"
+    echo "Min time:  ${MIN_T}s ($MIN_N)"
+    echo "Max time:  ${MAX_T}s ($MAX_N)"
+    echo "Avg time:  ${AVG_T}s"
+fi
