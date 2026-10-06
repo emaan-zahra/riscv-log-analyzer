@@ -58,6 +58,9 @@ Total tests: 25
 Passed:    22 ( 88.0%)
 Failed:     2 (  8.0%)
 Skipped:    1 (  4.0%)
+--- Per-Test Times ---
+  rv32i-add      (0.82s)
+  rv32i-sub      (0.65s)
 
 --- Failed Tests ---
   1. rv32i-sll
