@@ -39,3 +39,30 @@ all:
 clean:
 	@find output -type f ! -name '.gitkeep' -delete
 	@echo "Cleaned output/"
+
+	# Write a text and a CSV report for every log into output/
+report:
+	@mkdir -p output
+	@for log in $(LOGS); do \
+		name=$$(basename $$log .log); \
+		./$(SCRIPT) $$log --output output/$$name.txt || true; \
+		./$(SCRIPT) $$log --format csv --output output/$$name.csv || true; \
+		echo "Wrote output/$$name.txt and output/$$name.csv"; \
+	done
+
+# Check exit codes and key numbers against what we expect
+test:
+	@fail=0; \
+	./$(SCRIPT) test_data/sample_pass.log > /dev/null; code=$$?; \
+	if [ $$code -eq 0 ]; then echo "PASS: sample_pass.log exits 0"; \
+	else echo "FAIL: sample_pass.log exit code $$code"; fail=1; fi; \
+	./$(SCRIPT) test_data/sample_fail.log > /dev/null || code=$$?; \
+	if [ "$$code" -eq 1 ]; then echo "PASS: sample_fail.log exits 1"; \
+	else echo "FAIL: sample_fail.log exit code $$code"; fail=1; fi; \
+	if ./$(SCRIPT) test_data/sample_fail.log | grep -q "Total tests: 25"; then \
+		echo "PASS: sample_fail.log reports 25 tests"; \
+	else echo "FAIL: sample_fail.log total wrong"; fail=1; fi; \
+	if ./$(SCRIPT) test_data/sample_fail.log | grep -q "rv32i-beq"; then \
+		echo "PASS: sample_fail.log lists rv32i-beq as failed"; \
+	else echo "FAIL: rv32i-beq not listed"; fail=1; fi; \
+	exit $$fail
