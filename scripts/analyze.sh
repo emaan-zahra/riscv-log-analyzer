@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Default settings
+FORMAT="text"
+OUTPUT=""
+VERBOSE=0
+LOG_FILE=""
+
 # Function 1: show how to use the script
 usage() {
-    echo "Usage: analyze.sh <log_file>"
+    echo "Usage: analyze.sh <log_file> [options]"
+    echo ""
     echo "Options:"
-    echo "  --help    Show this message"
+    echo "  --format [text|csv]   Output format (default: text)"
+    echo "  --output <path>       Save output to a file (default: screen)"
+    echo "  --verbose             Show extra progress messages"
+    echo "  --help                Show this message"
 }
 
 # Function 2: print an error message and stop
@@ -14,23 +24,66 @@ error_exit() {
     exit 2
 }
 
-# If no argument was given, stop with an error
-if [[ $# -eq 0 ]]; then
+# Function 3: print a message only when --verbose is used
+log_verbose() {
+    if [[ $VERBOSE -eq 1 ]]; then
+        echo "[verbose] $1" >&2
+    fi
+}
+
+# Read the arguments one by one.
+# "shift" throws away the argument we just handled, so $1 becomes the next one.
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --help)
+            usage
+            exit 0
+            ;;
+        --verbose)
+            VERBOSE=1
+            shift
+            ;;
+        --format)
+            # --format needs a value after it, so check there is one
+            if [[ $# -lt 2 ]]; then
+                error_exit "--format needs a value (text or csv)"
+            fi
+            FORMAT="$2"
+            shift 2
+            ;;
+        --output)
+            if [[ $# -lt 2 ]]; then
+                error_exit "--output needs a file path"
+            fi
+            OUTPUT="$2"
+            shift 2
+            ;;
+        -*)
+            error_exit "Unknown option: $1"
+            ;;
+        *)
+            # Anything else is the log file
+            LOG_FILE="$1"
+            shift
+            ;;
+    esac
+done
+
+# Check the inputs
+if [[ -z "$LOG_FILE" ]]; then
     error_exit "Please give the path to a log file"
 fi
 
-# If the first argument is --help, show usage and stop
-if [[ "$1" == "--help" ]]; then
-    usage
-    exit 0
-fi
-
-LOG_FILE="$1"
-
-# If the file does not exist, stop with an error
 if [[ ! -f "$LOG_FILE" ]]; then
     error_exit "File not found: $LOG_FILE"
 fi
+
+if [[ "$FORMAT" != "text" && "$FORMAT" != "csv" ]]; then
+    error_exit "Format must be text or csv, not: $FORMAT"
+fi
+
+log_verbose "Log file: $LOG_FILE"
+log_verbose "Format: $FORMAT"
 
 # Count each result by searching for the words in the log.
 # grep -c counts matching lines. "|| true" stops the script from
